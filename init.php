@@ -1,14 +1,21 @@
 <?php
 /**
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
+ * SledgeHammer adjustments for CakePHP 
+ * 
+ * @package CakePHP
  */
 namespace SledgeHammer;
 
-if (!defined('CAKE_CORE_INCLUDE_PATH')) {
-	warning('CakePHP not loaded', 'Add "require (dirname(__FILE__).\'/../../sledgehammer/core/init_framework.php\'); to app/config/bootstrap.php"');
+if (!defined('CAKE_CORE_INCLUDE_PATH')) { // Is CakePHP loaded?
+	warning('CakePHP not loaded', 'Add "require (ROOT.\'/sledgehammer/core/init_framework.php\'); to app/config/bootstrap.php"');
 	return;
 }
+
+$GLOBALS['AutoLoader']->standalone = false; //
+
+// AutoLoading of CakePHP classes is deactivated, use App::import(), var $uses, etc
+// Use the SledgeHammer library inside a CakePHP project
+/*
 $cakePath = ROOT.'/cake/';
 $GLOBALS['AutoLoader']->importModule(array(
 	'name' => 'CakePHP',
@@ -23,5 +30,20 @@ $GLOBALS['AutoLoader']->importModule(array(
 ), array(
 	'ignore_folders' => array(ROOT.'/app/tests'),
 ));
-error_reporting(E_ALL & ~E_DEPRECATED); // Ignore the E_STRICT & E_DEPRECATED error messages
+*/
+// Ignore the E_STRICT & E_DEPRECATED error messages 
+error_reporting(E_ALL & ~E_DEPRECATED); 
+
+include_once ROOT.'/app/config/database.php';
+include_once ROOT.'/cake/libs/model/connection_manager.php';
+// Import datasources that use the "sledgehammer" driver
+$databaseConfig = new \DATABASE_CONFIG();
+foreach (get_object_vars($databaseConfig) as $name => $datasourceConfig) {
+
+	if (value($datasourceConfig['driver']) == 'sledgehammer') {
+		$datasource = \ConnectionManager::getDataSource($name);
+		$GLOBALS['Databases'][$name] = $datasource->connection; // Import the datbase object into sledgehammer
+	}
+}
+
 ?>

@@ -7,13 +7,11 @@ Add the "sledgehammer" folder at the same level as the "cake" folder:
  Project folder
  |- app
  |- cake
- |- plugins
  |- sledgehammer
  |- tmp
- |- vendors
 
 
 Modify your app/config/bootstrap.php to include:
 
-  require (dirname(__FILE__).'/../../sledgehammer/core/init_framework.php');
+  require (ROOT.'/sledgehammer/core/init_framework.php');
 
