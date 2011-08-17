@@ -15,6 +15,12 @@ class DboSledgehammer extends DboMysqli {
 	
 	function connect() {
 		$config = $this->config;
+		if (is_numeric($config['port'])) {
+			$config['socket'] = null;
+		} else {
+			$config['socket'] = $config['port'];
+			$config['port'] = null;
+		}
 		$this->connection = new \SledgeHammer\MySQLiDatabase();
 		$this->connected = $this->connection->connect($config['host'], $config['login'], $config['password'], $config['database'], $config['port'], $config['socket']);
 
