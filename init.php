@@ -34,16 +34,4 @@ $GLOBALS['AutoLoader']->importModule(array(
 // Ignore the E_STRICT & E_DEPRECATED error messages 
 error_reporting(E_ALL & ~E_DEPRECATED); 
 
-include_once ROOT.'/app/config/database.php';
-include_once ROOT.'/cake/libs/model/connection_manager.php';
-// Import datasources that use the "sledgehammer" driver
-$databaseConfig = new \DATABASE_CONFIG();
-foreach (get_object_vars($databaseConfig) as $name => $datasourceConfig) {
-
-	if (value($datasourceConfig['driver']) == 'sledgehammer') {
-		$datasource = \ConnectionManager::getDataSource($name);
-		$GLOBALS['Databases'][$name] = $datasource->connection; // Import the datbase object into sledgehammer
-	}
-}
-
 ?>

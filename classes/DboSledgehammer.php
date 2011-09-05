@@ -13,6 +13,11 @@ class DboSledgehammer extends DboMysqli {
 	 */
 	var $connection;
 	
+	public function __construct($config = null, $autoConnect = true) {
+		unset($this->configKeyName);
+		parent::__construct($config, $autoConnect);
+	}
+
 	function connect() {
 		$config = $this->config;
 		if (is_numeric($config['port'])) {
@@ -31,26 +36,33 @@ class DboSledgehammer extends DboMysqli {
 		}
 		return $this->connected;
 	}
-	
+
+	public function __set($property, $value) {
+		if ($property == 'configKeyName') {
+			$GLOBALS['Databases'][$value] = $this->connection; // Import the datbase object into sledgehammer
+		}
+		$this->property = $value;
+	}
+
 	/**
- * Executes given SQL statement.
- *
- * @param string $sql SQL statement
- * @return resource Result resource identifier
- * @access protected
- */
+	 * Executes given SQL statement.
+	 *
+	 * @param string $sql SQL statement
+	 * @return resource Result resource identifier
+	 * @access protected
+	 */
 	function _execute($sql) {
 		if (preg_match('/^\s*call/i', $sql)) {
 			return $this->_executeProcedure($sql);
 		}
 		return $this->connection->query($sql);
 	}
-	
-/**
- * Returns an array of sources (tables) in the database.
- *
- * @return array Array of tablenames in the database
- */
+
+	/**
+	 * Returns an array of sources (tables) in the database.
+	 *
+	 * @return array Array of tablenames in the database
+	 */
 	function listSources() {
 		$cache = DboMysqlBase::listSources();
 		if ($cache !== null) {
@@ -72,11 +84,11 @@ class DboSledgehammer extends DboMysqli {
 	}
 	
 	/**
- * Returns number of rows in previous resultset. If no previous resultset exists,
- * this returns false.
- *
- * @return integer Number of rows in resultset
- */
+	 * Returns number of rows in previous resultset. If no previous resultset exists,
+	 * this returns false.
+	 *
+	 * @return integer Number of rows in resultset
+	 */
 	function lastNumRows() {
 		if ($this->hasResult()) {
 			return count($this->_result);
@@ -105,11 +117,11 @@ class DboSledgehammer extends DboMysqli {
 		}
 	}
 	
-/**
- * Fetches the next row from the current result set
- *
- * @return unknown
- */
+	/**
+	 * Fetches the next row from the current result set
+	 *
+	 * @return unknown
+	 */
 	function fetchResult() {
 		if ($row = mysqli_fetch_row($this->results->Result)) {
 			$resultRow = array();
@@ -124,7 +136,5 @@ class DboSledgehammer extends DboMysqli {
 		}
 		return false;
 	}
-
 }
-
 ?>
