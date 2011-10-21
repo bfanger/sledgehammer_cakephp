@@ -6,17 +6,21 @@
 App::import('Datasource', 'DboSource');
 App::import('Datasource', 'DboMysqli');
 class DboSledgehammer extends DboMysqli {
-	
+
 	/**
-	 * @var MySQLi2PDO
+	 * @var PDO
 	 */
 	var $connection;
-	
+
+	/**
+	 * @var int|null
+	 */
+	var $affected_rows;
 	/**
 	 * @var PDOStatement
 	 */
 	var $results;
-	
+
 	public function __construct($config = null, $autoConnect = true) {
 		unset($this->configKeyName);
 		parent::__construct($config, $autoConnect);
@@ -33,20 +37,30 @@ class DboSledgehammer extends DboMysqli {
 		if (empty($config['encoding'])) {
 			$config['encoding'] = null;
 		}
-		$this->connection = new MySQLi2PDO();
-		$this->connected = $this->connection->connect($config['host'], $config['login'], $config['password'], $config['database'], $config['port'], $config['socket'], $config['encoding']);
+		$url = new \SledgeHammer\URL('');
+		$url->scheme = 'mysql';
+		$url->host = $config['host'];
+		$url->user = $config['login'];
+		$url->pass = $config['password'];
+		$url->path = '/'.$config['database'];
+		$url->port = $config['port'];
+		if ($config['socket'] !== null) {
+			$url->query['unix_socket'] = $config['socket'];
+		}
+		if (isset ($config['encoding'])) {
+			$url->query['charset'] = $config['encoding'];
+		}
+		$this->connection = new \SledgeHammer\Database($url);
+		$this->connected = true;
 
 		$this->_useAlias = true;//(bool)version_compare(mysqli_get_server_info($this->connection), "4.1", ">=");
-		if (isset ($config['encoding'])) {
-			$this->setEncoding($config['encoding']);
-		}
-		
+
 		return $this->connected;
 	}
 
 	public function __set($property, $value) {
 		if ($property == 'configKeyName') {
-			$GLOBALS['Databases'][$value] = $this->connection->pdo; // Import the datbase object into sledgehammer
+			$GLOBALS['Databases'][$value] = $this->connection; // Import the datbase object into sledgehammer
 		}
 		$this->property = $value;
 	}
@@ -62,7 +76,14 @@ class DboSledgehammer extends DboMysqli {
 		if (preg_match('/^\s*call/i', $sql)) {
 			return $this->_executeProcedure($sql);
 		}
-		return $this->connection->query($sql);
+		if (preg_match('/^(INSERT|UPDATE|SET) ([^ ]+)[ ]*(.*)/', $sql, $match)) {
+			$statement = $this->connection->exec($sql);
+			$this->affected_rows = $statement;
+		} else {
+			$statement = $this->connection->query($sql);
+			$this->affected_rows = null;
+		}
+		return $statement;
 	}
 
 	/**
@@ -89,7 +110,7 @@ class DboSledgehammer extends DboMysqli {
 		DboMysqlBase::listSources($tables);
 		return $tables;
 	}
-	
+
 	/**
 	 * Returns number of rows in previous resultset. If no previous resultset exists,
 	 * this returns false.
@@ -102,10 +123,10 @@ class DboSledgehammer extends DboMysqli {
 		}
 		return null;
 	}
-	
+
 	/**
 	 *
-	 * @param PDOStatement $results 
+	 * @param PDOStatement $results
 	 */
 	function resultSet(&$results) {
 		$this->results =& $results;
@@ -135,7 +156,7 @@ class DboSledgehammer extends DboMysqli {
 			}
 		 */
 	}
-	
+
 	/**
 	 * Fetches the next row from the current result set
 	 *
@@ -158,12 +179,12 @@ class DboSledgehammer extends DboMysqli {
 
 	public function lastAffected() {
 		if ($this->_result) {
-			return $this->connection->affected_rows;
+			return $this->affected_rows;
 		}
 		return null;
 	}
 	function lastError() {
-		$error = $this->connection->pdo->errorInfo();
+		$error = $this->connection->errorInfo();
 		if ($error[0] != '00000') { // An error occured?
 			return $error[1].': '.$error[2];
 		}
@@ -212,12 +233,12 @@ class DboSledgehammer extends DboMysqli {
 						return $data;
 					}
 			default:
-				$data = $this->connection->pdo->quote($data);
+				$data = $this->connection->quote($data);
 				break;
 		}
 
 		return $data;
 	}
-	
+
 }
 ?>
