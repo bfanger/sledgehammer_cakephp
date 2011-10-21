@@ -1,17 +1,21 @@
 <?php
 /**
- * CakePHP Datasource wrapper for SledgeHammer's MySQLiDatabase object
+ * CakePHP Datasource wrapper for SledgeHammer's Database object
  *
  */
-
 App::import('Datasource', 'DboSource');
 App::import('Datasource', 'DboMysqli');
 class DboSledgehammer extends DboMysqli {
 	
 	/**
-	 * @var \SledgeHammer\MySQLiDatabase
+	 * @var MySQLi2PDO
 	 */
 	var $connection;
+	
+	/**
+	 * @var PDOStatement
+	 */
+	var $results;
 	
 	public function __construct($config = null, $autoConnect = true) {
 		unset($this->configKeyName);
@@ -26,20 +30,23 @@ class DboSledgehammer extends DboMysqli {
 			$config['socket'] = $config['port'];
 			$config['port'] = null;
 		}
-		$this->connection = new \SledgeHammer\MySQLiDatabase();
-		$this->connected = $this->connection->connect($config['host'], $config['login'], $config['password'], $config['database'], $config['port'], $config['socket']);
+		if (empty($config['encoding'])) {
+			$config['encoding'] = null;
+		}
+		$this->connection = new MySQLi2PDO();
+		$this->connected = $this->connection->connect($config['host'], $config['login'], $config['password'], $config['database'], $config['port'], $config['socket'], $config['encoding']);
 
-		$this->_useAlias = (bool)version_compare(mysqli_get_server_info($this->connection), "4.1", ">=");
-
-		if (!empty($config['encoding'])) {
+		$this->_useAlias = true;//(bool)version_compare(mysqli_get_server_info($this->connection), "4.1", ">=");
+		if (isset ($config['encoding'])) {
 			$this->setEncoding($config['encoding']);
 		}
+		
 		return $this->connected;
 	}
 
 	public function __set($property, $value) {
 		if ($property == 'configKeyName') {
-			$GLOBALS['Databases'][$value] = $this->connection; // Import the datbase object into sledgehammer
+			$GLOBALS['Databases'][$value] = $this->connection->pdo; // Import the datbase object into sledgehammer
 		}
 		$this->property = $value;
 	}
@@ -98,23 +105,35 @@ class DboSledgehammer extends DboMysqli {
 	
 	/**
 	 *
-	 * @param \SledgeHammer\MySQLiResultIterator $results 
+	 * @param PDOStatement $results 
 	 */
 	function resultSet(&$results) {
 		$this->results =& $results;
 		$this->map = array();
-		$numFields = mysqli_num_fields($results->Result);
+		$numFields = $results->columnCount();
 		$index = 0;
-		$j = 0;
-		while ($j < $numFields) {
-			$column = mysqli_fetch_field_direct($results->Result, $j);
-			if (!empty($column->table)) {
+
+		while ($numFields-- > 0) {
+			$column = $results->getColumnMeta($index);
+			if (empty($column['native_type'])) {
+				$type = ($column['len'] == 1) ? 'boolean' : 'string';
+			} else {
+				$type = $column['native_type'];
+			}
+			if (!empty($column['table']) && strpos($column['name'], $this->virtualFieldSeparator) === false) {
+				$this->map[$index++] = array($column['table'], $column['name']);
+			} else {
+				$this->map[$index++] = array(0, $column['name']);
+			}
+		}
+		/*
+		$column = mysqli_fetch_field_direct($results, $j);
+			if (!empty($column->table) && strpos($column->name, $this->virtualFieldSeparator) === false) {
 				$this->map[$index++] = array($column->table, $column->name);
 			} else {
 				$this->map[$index++] = array(0, $column->name);
 			}
-			$j++;
-		}
+		 */
 	}
 	
 	/**
@@ -123,7 +142,7 @@ class DboSledgehammer extends DboMysqli {
 	 * @return unknown
 	 */
 	function fetchResult() {
-		if ($row = mysqli_fetch_row($this->results->Result)) {
+		if ($row = $this->results->fetch(PDO::FETCH_NUM)) {
 			$resultRow = array();
 			foreach ($row as $index => $field) {
 				$table = $column = null;
@@ -136,5 +155,69 @@ class DboSledgehammer extends DboMysqli {
 		}
 		return false;
 	}
+
+	public function lastAffected() {
+		if ($this->_result) {
+			return $this->connection->affected_rows;
+		}
+		return null;
+	}
+	function lastError() {
+		$error = $this->connection->pdo->errorInfo();
+		if ($error[0] != '00000') { // An error occured?
+			return $error[1].': '.$error[2];
+		}
+		return null;
+	}
+
+	function getCharsetName($name) {
+		$cols = $this->query('SELECT CHARACTER_SET_NAME FROM INFORMATION_SCHEMA.COLLATIONS WHERE COLLATION_NAME= ' . $this->value($name) . ';');
+		if (isset($cols[0]['COLLATIONS']['CHARACTER_SET_NAME'])) {
+			return $cols[0]['COLLATIONS']['CHARACTER_SET_NAME'];
+		}
+		return false;
+	}
+	function value($data, $column = null, $safe = false) {
+		$parent = DboSource::value($data, $column, $safe);
+
+		if ($parent != null) {
+			return $parent;
+		}
+		if ($data === null || (is_array($data) && empty($data))) {
+			return 'NULL';
+		}
+		if ($data === '' && $column !== 'integer' && $column !== 'float' && $column !== 'boolean') {
+			return "''";
+		}
+		if (empty($column)) {
+			$column = $this->introspectType($data);
+		}
+
+		switch ($column) {
+			case 'boolean':
+				return $this->boolean((bool)$data);
+			break;
+			case 'integer' :
+			case 'float' :
+			case null :
+				if ($data === '') {
+					return 'NULL';
+				}
+				if (is_float($data)) {
+					return str_replace(',', '.', strval($data));
+				}
+				if ((is_int($data) || is_float($data) || $data === '0') || (
+					is_numeric($data) && strpos($data, ',') === false &&
+					$data[0] != '0' && strpos($data, 'e') === false)) {
+						return $data;
+					}
+			default:
+				$data = $this->connection->pdo->quote($data);
+				break;
+		}
+
+		return $data;
+	}
+	
 }
 ?>
