@@ -79,6 +79,9 @@ class DboSledgehammer extends DboMysqli {
 		if (preg_match('/^(INSERT|UPDATE|SET) ([^ ]+)[ ]*(.*)/', $sql, $match)) {
 			$statement = $this->connection->exec($sql);
 			$this->affected_rows = $statement;
+			if ($statement !== false) {
+				$statement = true;
+			}
 		} else {
 			$statement = $this->connection->query($sql);
 			$this->affected_rows = null;
