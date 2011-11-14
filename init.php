@@ -10,7 +10,7 @@ if (!defined('CAKE_CORE_INCLUDE_PATH')) { // Is CakePHP loaded?
 	warning('CakePHP not loaded', 'Add "require (ROOT.\'/sledgehammer/core/init_framework.php\'); to app/config/bootstrap.php"');
 	return;
 }
-
+require_once (MODULES_DIR.'core/render_public_folders.php');
 $GLOBALS['AutoLoader']->standalone = false; //
 
 // AutoLoading of CakePHP classes is deactivated, use App::import(), var $uses, etc
