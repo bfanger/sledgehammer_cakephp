@@ -60,7 +60,7 @@ class DboSledgehammer extends DboMysqli {
 
 	public function __set($property, $value) {
 		if ($property == 'configKeyName') {
-			$GLOBALS['Databases'][$value] = $this->connection; // Import the datbase object into sledgehammer
+			\SledgeHammer\Database::$instances[$value] = $this->connection; // Import the datbase object into sledgehammer
 		}
 		$this->property = $value;
 	}

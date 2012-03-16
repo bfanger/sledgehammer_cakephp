@@ -1,7 +1,7 @@
 <?php
 /**
- * SledgeHammer adjustments for CakePHP 
- * 
+ * SledgeHammer adjustments for CakePHP
+ *
  * @package CakePHP
  */
 namespace SledgeHammer;
@@ -11,7 +11,7 @@ if (!defined('CAKE_CORE_INCLUDE_PATH')) { // Is CakePHP loaded?
 	return;
 }
 require_once (MODULES_DIR.'core/render_public_folders.php');
-$GLOBALS['AutoLoader']->standalone = false; //
+Framework::$autoLoader->standalone = false;
 
 // AutoLoading of CakePHP classes is deactivated, use App::import(), var $uses, etc
 // Use the SledgeHammer library inside a CakePHP project
@@ -31,7 +31,7 @@ $GLOBALS['AutoLoader']->importModule(array(
 	'ignore_folders' => array(ROOT.'/app/tests'),
 ));
 */
-// Ignore the E_STRICT & E_DEPRECATED error messages 
-error_reporting(E_ALL & ~E_DEPRECATED); 
+// Ignore the E_STRICT & E_DEPRECATED error messages
+error_reporting(E_ALL & ~E_DEPRECATED);
 
 ?>
