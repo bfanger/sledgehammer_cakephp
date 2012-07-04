@@ -1,8 +1,15 @@
 <?php
-namespace SledgeHammer;
+namespace Sledgehammer;
 /**
  * @package CakePHP
  */
+if (is_dir(APPLICATION_DIR.'Config') == false) {
+	if (defined('BAKING')) {
+		return;
+	}
+	notice('Missing "APP/Config/" folder, run `php cakephp/utils/bake_project.php`');
+
+}
 define('DS', DIRECTORY_SEPARATOR);
 define('ROOT', substr(PATH, 0, -1));
 define('WWW_ROOT', PATH.'public/');
