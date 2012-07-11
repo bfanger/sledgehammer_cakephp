@@ -16,6 +16,10 @@ define('WWW_ROOT', PATH.'public/');
 define('APP_DIR', basename(APPLICATION_DIR));
 define('TMP',  TMP_DIR.	'cakephp/');
 
+if (ENVIRONMENT === 'phpunit') {
+	define('CORE_TEST_CASES', dirname(__FILE__).'/Cake/Test/Case');
+	Framework::$autoLoader->importFolder(dirname(__FILE__).'/Cake/TestSuite/', array('mandatory_superclass' => false));
+}
 mkdirs(TMP.'cache/persistent');
 mkdirs(TMP.'cache/models');
 mkdirs(TMP.'cache/views');
